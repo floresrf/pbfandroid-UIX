@@ -1,0 +1,23 @@
+/* values of symbols defined by linked objects / recovered modules (from TABLE2.PRG) */
+#define D_ANIMPTR 752
+#define D_CENT 17723
+#define D_DI_SIFFROR 17694
+#define D_FLIPLINFO 26944
+#define D_FONT11 25760
+#define D_FONT13 25232
+#define D_FONT5 26528
+#define D_FONT8 26208
+#define D_FONT_ADR 17690
+#define D_HID1 1408
+#define D_HID2 1152
+#define D_HOJD_1 17686
+#define D_HOJD_ADD 17688
+#define D_LASTCOMMAS 18045
+#define D_LOOPES 748
+#define D_OLDBUF 18033
+#define D_SIFFRORNA 17997
+#define D_SIN 18064
+#define D_SI_SIFFROR 17692
+#define D_TABORT_DIOVRE 17682
+#define D_TABORT_DIOVRE_FNT 17684
+#define D_VBLANKSBET 750
