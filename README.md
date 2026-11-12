@@ -1,3 +1,13 @@
+FORK DESCRIPTION
+-------
+This version purpose is to add more interface features like buttons and language (this one will come later tho).
+Please support the original project the Digital Illusions for making the game.
+
+This project won't provide the game files, you'll need to provide these yourself.
+
+ORIGINAL DESCRIPTION
+-------
+
 Pinball Fantasies (1992) Android
 =====================
 
