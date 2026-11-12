@@ -11,6 +11,7 @@ typedef struct {
     int num_keys; /* 0 means a discrete tap-toggle button -- see DescoreTouchTapFn */
     bool custom_visibility;
     bool visible;
+    GLuint texture_id; /* Custom texture for the button; 0 = draw flat square as a fallback */
 } DescoreTouchButtonState;
 
 static DescoreTouchButtonState s_buttons[DESCORE_TOUCH_MAX_BUTTONS];
@@ -100,6 +101,14 @@ void descore_touch_set_button_visible(int index, bool visible) {
     }
     s_buttons[index].visible = visible;
 }
+
+void descore_touch_set_button_texture(int index, unsigned int texture_id) {
+    if (index < 0 || index >= s_num_buttons) {
+        return;
+    }
+    s_buttons[index].texture_id = texture_id;
+}
+
 
 bool descore_touch_gamepad_connected(void) {
     return s_gamepad_connected;
@@ -315,10 +324,22 @@ float descore_touch_opacity(void) {
 
 /* Drawn as a separate screen-space GL overlay on top of whatever the game's own frame already
  * drew -- simple flat translucent gray quads, no textures, same level of visual polish
- * got_draw_touch_buttons() already established. */
+ * got_draw_touch_buttons() already established. 
+ *   
+ * NOTE!!!
+ *
+ * Modified to be able to load custom textures    */
 void descore_touch_draw(void) {
     int i;
     bool any_visible;
+
+    /* UV coordinates for a standard 2D quad */
+    static const GLfloat tex_coords[8] = {
+        0.0f, 0.0f,
+        1.0f, 0.0f,
+        0.0f, 1.0f,
+        1.0f, 1.0f,
+    };
 
     if (!s_initialized) {
         return;
@@ -337,21 +358,14 @@ void descore_touch_draw(void) {
 
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
-    /* Orthographic projection in real screen pixels, origin top-left (matching Android's own
-     * touch-coordinate convention, and the button rects above), y flipped so pixel row 0 is at the
-     * top of the screen the way glOrtho's default bottom-left-origin otherwise wouldn't be. */
     glOrthof(0.0f, (float) s_screen_w, (float) s_screen_h, 0.0f, -1.0f, 1.0f);
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
-    glDisable(GL_TEXTURE_2D);
+    /* --- REPLACED RENDERING BLOCK STARTS HERE --- */
     glEnable(GL_BLEND);
     glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
     glEnableClientState(GL_VERTEX_ARRAY);
-    glColor4f(0.7f, 0.7f, 0.7f, s_opacity); /* translucent light gray -- visible over any game
-                                              * art, not opaque. Every button draws through this
-                                              * same glColor4f() call, so all of them move
-                                              * together when the Opacity slider changes. */
 
     for (i = 0; i < s_num_buttons; ++i) {
         const DescoreTouchButtonState *b;
@@ -364,21 +378,33 @@ void descore_touch_draw(void) {
         vertices[2] = b->x + b->w;  vertices[3] = b->y;
         vertices[4] = b->x;         vertices[5] = b->y + b->h;
         vertices[6] = b->x + b->w;  vertices[7] = b->y + b->h;
+
+        if (b->texture_id != 0) {
+            /* Draw custom texture with current opacity */
+            glEnable(GL_TEXTURE_2D);
+            glBindTexture(GL_TEXTURE_2D, b->texture_id);
+            glEnableClientState(GL_TEXTURE_COORD_ARRAY);
+            glTexCoordPointer(2, GL_FLOAT, 0, tex_coords);
+            glColor4f(1.0f, 1.0f, 1.0f, s_opacity);
+        } else {
+            /* Fallback: draw flat translucent gray quad if no texture is set */
+            glDisable(GL_TEXTURE_2D);
+            glDisableClientState(GL_TEXTURE_COORD_ARRAY);
+            glColor4f(0.7f, 0.7f, 0.7f, s_opacity);
+        }
+
         glVertexPointer(2, GL_FLOAT, 0, vertices);
         glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     }
 
+    glDisableClientState(GL_TEXTURE_COORD_ARRAY);
     glDisableClientState(GL_VERTEX_ARRAY);
-    glColor4f(1.0f, 1.0f, 1.0f, 1.0f); /* restore the default color state the game's own present
-                                        * call expects */
+    glBindTexture(GL_TEXTURE_2D, 0);
+    glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
     glDisable(GL_BLEND);
     glEnable(GL_TEXTURE_2D);
+    /* --- REPLACED RENDERING BLOCK ENDS HERE --- */
 
-    /* Restore GL_PROJECTION/GL_MODELVIEW back to identity before returning. This function
-     * switches to its own screen-pixel orthographic projection above (glOrthof) to draw the
-     * buttons; leaving it in place would make the next frame's main quad render under a wrong
-     * projection, outside the visible clip range, i.e. a black screen. Done unconditionally so a
-     * game whose present call doesn't reset the matrices itself is safe. */
     glMatrixMode(GL_PROJECTION);
     glLoadIdentity();
     glMatrixMode(GL_MODELVIEW);
